@@ -1,3 +1,7 @@
+#pragma once
+
+#ifndef RRT_TREE_H
+#define RRT_TREE_H
 #include <iostream>
 #include <cstdlib>
 #include <climits>
@@ -55,3 +59,4 @@ public:
     int generateRRT(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep);
     std::vector<traj> backtracking_traj();
 };
+#endif

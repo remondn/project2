@@ -1,3 +1,7 @@
+#pragma once
+
+#ifndef POINTPOINT_H
+#define POINTPOINT_H
 #include <math.h>
 
 struct point{
@@ -5,7 +9,6 @@ struct point{
 	double y;
 	double th;
 };
-
 
 float distance(point a, point b)
 {
@@ -39,3 +42,5 @@ float getDirection(point car_pose, point goal_pose)
 
     return angle;
 }
+
+#endif
