@@ -11,6 +11,9 @@
 // We got new message at frequency 10Hz => 1/10 seconds
 #define DELTA_T 1
 
+// We got new message at frequency 10Hz => 1/10 seconds
+#define DELTA_T 1
+
 class PID{
 public:
     PID();
