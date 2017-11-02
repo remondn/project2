@@ -20,6 +20,10 @@
 #include <algorithm>
 #include <pwd.h>
 
+#include "project2/functions.h"
+
+#define MAX_SPEED 2.0
+
 //map spec
 cv::Mat map;
 double res;
@@ -49,6 +53,7 @@ std::vector<traj> path_RRT;
 
 //robot
 point robot_pose;
+PID pid_ctrl;
 ackermann_msgs::AckermannDriveStamped cmd;
 
 //FSM state
@@ -107,6 +112,10 @@ int main(int argc, char** argv){
     generate_path_RRT();
     printf("Generate RRT\n");
 
+    // Initialise the iterator to access the right point of the path
+    std::vector<traj>::iterator currentGoal = path_RRT.begin();
+    traj prevGoal = *currentGoal;
+
     // FSM
     state = INIT;
     bool running = true;
@@ -117,7 +126,7 @@ int main(int argc, char** argv){
         switch (state) {
         case INIT: {
             look_ahead_idx = 0;
-	    printf("path size : %d\n", path_RRT.size());
+	    printf("path size : %d\n", static_cast<int>(path_RRT.size()));
             //visualize path
 	
             for(int i = 0; i < path_RRT.size(); i++){
@@ -215,7 +224,45 @@ int main(int argc, char** argv){
 			look_ahead_idx++
 		5. if robot reach the final goal
 			finish RUNNING (state = FINISH)
-	    */
+        */
+            // Step 1 : Update the steering angle with PID algorithm
+            setcmdvel(MAX_SPEED, pid_ctrl.get_control(robot_pose, prevGoal, *currentGoal));
+
+            // Step 2 : Publish the new data
+            cmd_vel_pub.publish(cmd);
+
+            // Step 3 & 4 : Check if we reached the point
+            point goal;
+            goal.x = currentGoal->x;
+            goal.y = currentGoal->y;
+            goal.th = currentGoal->th;
+            if(distance(robot_pose, goal) < 0.2)
+            {
+                //DEBUG
+                std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+                std::cout << "Point Reached !" << std::endl;
+                std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+
+                // If the distance is lower than 0.2 meters, then we change the goal
+                pid_ctrl.initErrorSum();
+                prevGoal = *currentGoal;
+                currentGoal++;
+            }
+
+            //Step 5 : Check if we reached our final destination
+            if(currentGoal == path_RRT.end())
+            {
+                // We loved you dear robot, but it's time to say goodbye, maybe forever...
+                state = FINISH;
+
+                //DEBUG
+                std::cout << "___________________________________" << std::endl;
+                std::cout << "END OF PATH !" << std::endl;
+                std::cout << "___________________________________" << std::endl;
+            }
+
+            ros::spinOnce();
+            control_rate.sleep();
         } break;
 
         case FINISH: {
@@ -255,7 +302,7 @@ void generate_path_RRT()
         t.generateRRT(world_x_max, world_x_min, world_y_max, world_y_min, K, MaxStep);
         
         // Get the backtracking path
-        std::vector<traj> pathI = backtracking_traj();
+        std::vector<traj> pathI = t.backtracking_traj();
         
         // Reverse the path, since it's not the write way
         std::reverse(pathI.begin(), pathI.end());
